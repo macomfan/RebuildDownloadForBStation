@@ -7,7 +7,7 @@ import java.util.List;
 
 public class main {
     // Hard code the parameter
-    private static String inputFolder_ = "C:\\dev\\ffmpegBin\\files";
+    private static String inputFolder_ = "C:\\dev\\ffmpegBin\\files\\82622395";
     private static String ffmpegBinFolder_ = "C:\\dev\\ffmpegBin\\bin";
     private static String outputFolder_ = "C:\\dev\\ffmpegBin\\output";
     private static String tempFolderName_ = "temp";
@@ -39,16 +39,20 @@ public class main {
                 context.MediaType = jsonObject.getString("media_type");
                 context.OutputFolder = outputFolder_;
                 context.TempFolder = tempFolder;
-                System.out.println(context.Title);
-//                if (context.MediaType.equals("1")) {
-//                    Media1 media1 = new Media1(context);
-//                    media1.startConvert();
-//                } else if (context.MediaType.equals("2")) {
-//                    Media2 media2 = new Media2(context);
-//                    media2.startConvert();
-//                } else {
-//                    System.err.println("[ERR] Unknown media type in: " + path);
-//                }
+                JSONObject page = jsonObject.getJSONObject("page_data");
+                if (page != null) {
+                    context.Page = page.getString("page");
+                }
+                if (context.MediaType.equals("1")) {
+                    Media1 media1 = new Media1(context);
+                    media1.startConvert();
+                } else if (context.MediaType.equals("2")) {
+                    Media2 media2 = new Media2(context);
+                    media2.startConvert();
+                } else {
+                    System.err.println("[ERR] Unknown media type in: " + path);
+                }
+                System.out.println("[INFO] Convert done");
             } catch (Exception e) {
                 System.err.println("[ERR] Convert failed: " + e.getMessage());
             }

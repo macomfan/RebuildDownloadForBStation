@@ -5,4 +5,5 @@ public class MediaContext {
     public String BaseFolder;
     public String OutputFolder;
     public String TempFolder;
+    public String Page;
 }

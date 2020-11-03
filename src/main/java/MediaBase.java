@@ -16,8 +16,10 @@ public abstract class MediaBase {
     }
 
     protected String getOutputFileName() {
-        String title = context_.Title.replaceAll("[ 。|<>?*/.:]", "");
-        return context_.OutputFolder + File.separator + title + ".mp4";
+        String invalid = "[ 。|<>?*/.:]";
+        String title = context_.Title.replaceAll(invalid, "");
+        String page = context_.Page.replaceAll(invalid, "");
+        return context_.OutputFolder + File.separator + title + "_" + page + ".mp4";
     }
 
     protected String generateTempFilename(String inputFilename) {

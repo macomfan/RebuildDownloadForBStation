@@ -92,7 +92,7 @@ public class FFmpeg {
                 sb.append(line + "\n");
                 //System.out.println(sb);
             }
-            System.out.println(sb);//打印执行后的结果
+            // System.out.println(sb);//打印执行后的结果
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
