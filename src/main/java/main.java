@@ -7,7 +7,7 @@ import java.util.List;
 
 public class main {
     // Hard code the parameter
-    private static String inputFolder_ = "C:\\dev\\ffmpegBin\\files\\82622395";
+    private static String inputFolder_ = "C:\\dev\\ffmpegBin\\files";
     private static String ffmpegBinFolder_ = "C:\\dev\\ffmpegBin\\bin";
     private static String outputFolder_ = "C:\\dev\\ffmpegBin\\output";
     private static String tempFolderName_ = "temp";
