@@ -25,12 +25,16 @@ public class FileHelper {
         }
     }
 
+    public static String correctFileName(String path) {
+        String invalid = "[ 。|<>?*/.:]";
+        return  path.replaceAll(invalid, "");
+    }
+
     public static void checkOrCreateFolder(String path) throws Exception {
         File file = new File(path);
-        if (!file.getParentFile().exists()) {
-            file.getParentFile().mkdirs();
+        if (!file.exists()) {
+            file.mkdirs();
         }
-        file.mkdir();
         makeSureFileExisted(path);
     }
 

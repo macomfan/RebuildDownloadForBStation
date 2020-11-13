@@ -2,14 +2,17 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
 import java.io.*;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 public class main {
     // Hard code the parameter
     private static String inputFolder_ = "C:\\dev\\ffmpegBin\\files";
     private static String ffmpegBinFolder_ = "C:\\dev\\ffmpegBin\\bin";
     private static String outputFolder_ = "C:\\dev\\ffmpegBin\\output";
+    private static int createFolderIfPageGreater_ = 3;
     private static String tempFolderName_ = "temp";
     private static String objectFileName_ = "entry.json";
 
@@ -27,53 +30,83 @@ public class main {
             System.err.println("[ERR] Cannot find the ffmpeg bin folder: " + ffmpegBinFolder_);
         }
         FFmpeg.instance().setRuntimeFolder(ffmpegBinFolder_);
-        List<String> objectFolder = findFolderIncludedFile(inputFolder_, objectFileName_);
-        for (String path : objectFolder) {
-            try {
-                File objectFile = new File(path + File.separator + objectFileName_);
-                JSONObject jsonObject = readJsonFile(objectFile.getAbsolutePath());
-                MediaContext context = new MediaContext();
-                context.Title = jsonObject.getString("title");
-                context.Tag = jsonObject.getString("type_tag");
-                context.BaseFolder = path;
-                context.MediaType = jsonObject.getString("media_type");
-                context.OutputFolder = outputFolder_;
-                context.TempFolder = tempFolder;
-                JSONObject page = jsonObject.getJSONObject("page_data");
-                if (page != null) {
-                    context.Page = page.getString("page");
+        Map<String, List<String>> cacheFolders = findCacheFolders("", inputFolder_, objectFileName_);
+        cacheFolders.forEach((key, value) -> {
+            String outputFolder = outputFolder_;
+            for (String path: value) {
+                try {
+                    File objectFile = new File(path + File.separator + objectFileName_);
+                    JSONObject jsonObject = readJsonFile(objectFile.getAbsolutePath());
+                    MediaContext context = new MediaContext();
+                    context.Title = jsonObject.getString("title");
+                    context.Tag = jsonObject.getString("type_tag");
+                    context.BaseFolder = path;
+                    context.MediaType = jsonObject.getString("media_type");
+                    context.OutputFolder = outputFolder;
+                    context.TempFolder = tempFolder;
+                    JSONObject page = jsonObject.getJSONObject("page_data");
+                    if (page != null) {
+                        context.Page = page.getString("page");
+                    }
+                    if (value.size() > createFolderIfPageGreater_) {
+                        outputFolder = outputFolder_ + "\\" + FileHelper.correctFileName(jsonObject.getString("title"));
+                        try {
+                            FileHelper.checkOrCreateFolder(outputFolder);
+                        } catch (Exception e) {
+                            System.err.println("[ERR] Cannot create output folder: " + outputFolder_);
+                        }
+                        context.Title =  page.getString("part");;
+                        context.Page = "";
+                        context.OutputFolder = outputFolder;
+                    }
+                    if (context.MediaType.equals("1")) {
+                        Media1 media1 = new Media1(context);
+                        media1.startConvert();
+                    } else if (context.MediaType.equals("2")) {
+                        Media2 media2 = new Media2(context);
+                        media2.startConvert();
+                    } else {
+                        System.err.println("[ERR] Unknown media type in: " + path);
+                    }
+                    System.out.println("[INFO] Convert done");
+                } catch (Exception e) {
+                    System.err.println("[ERR] Convert failed: " + e.getMessage());
                 }
-                if (context.MediaType.equals("1")) {
-                    Media1 media1 = new Media1(context);
-                    media1.startConvert();
-                } else if (context.MediaType.equals("2")) {
-                    Media2 media2 = new Media2(context);
-                    media2.startConvert();
-                } else {
-                    System.err.println("[ERR] Unknown media type in: " + path);
-                }
-                System.out.println("[INFO] Convert done");
-            } catch (Exception e) {
-                System.err.println("[ERR] Convert failed: " + e.getMessage());
             }
-
-        }
+        });
     }
 
-    private static List<String> findFolderIncludedFile(String path, String specifiedFileName) {
-        List<String> folders = new LinkedList<String>();
+    private static Map<String, List<String>> findCacheFolders(String parent, String path, String specifiedFileName) {
+        Map<String, List<String>> cacheFolders = new HashMap<>();
+        List<String> folders = new LinkedList<>();
         File file = new File(path);
         File[] fileList = file.listFiles();
         for (File f : fileList) {
             if (f.isDirectory()) {
-                folders.addAll(findFolderIncludedFile(f.getPath(), specifiedFileName));
+                Map<String, List<String>> tmp = findCacheFolders(path, f.getPath(), specifiedFileName);
+                if (!tmp.isEmpty()) {
+                    tmp.forEach((key,value)->  {
+                        if (!cacheFolders.containsKey(key)) {
+                            cacheFolders.put(key,value);
+                        } else {
+                            cacheFolders.get(key).addAll(value);
+                        }
+                    });
+                }
             } else {
                 if (f.getName().equals(specifiedFileName)) {
                     folders.add(path);
                 }
             }
         }
-        return folders;
+        if (!folders.isEmpty()) {
+            if (!cacheFolders.containsKey(parent)) {
+                cacheFolders.put(parent, folders);
+            } else {
+                cacheFolders.get(parent).addAll(folders);
+            }
+        }
+        return cacheFolders;
     }
 
     private static JSONObject readJsonFile(String fileName) {
