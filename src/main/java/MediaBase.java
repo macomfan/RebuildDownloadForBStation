@@ -5,6 +5,8 @@ import java.util.List;
 public abstract class MediaBase {
     protected MediaContext context_ = null;
 
+    public String outputFileName_ = "";
+
     public MediaBase(MediaContext context) {
         context_ = context;
     }
@@ -16,9 +18,12 @@ public abstract class MediaBase {
     }
 
     protected String getOutputFileName() {
-        String page = !context_.Page.isEmpty() ? "_" + context_.Page : "";
-        String tmp = FileHelper.correctFileName(context_.Title + page);
-        return context_.OutputFolder + File.separator + tmp + ".mp4";
+        if (outputFileName_.isEmpty()) {
+            String page = !context_.Page.isEmpty() ? "_" + context_.Page : "";
+            String tmp = FileHelper.correctFileName(context_.Title + page);
+            outputFileName_ = context_.OutputFolder + File.separator + tmp + ".mp4";
+        }
+        return outputFileName_;
     }
 
     protected String generateTempFilename(String inputFilename) {

@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class main {
     // Hard code the parameter
@@ -16,11 +18,62 @@ public class main {
     private static String tempFolderName_ = "temp";
     private static String objectFileName_ = "entry.json";
 
+    private static String tempFolder_;
+
+    private static ExecutorService fixedThreadPool_ = Executors.newFixedThreadPool(4);
+
+    public static void doConvert(String path, int numOfPages) {
+        fixedThreadPool_.execute(() -> {
+            try {
+                String outputFolder = outputFolder_;
+                File objectFile = new File(path + File.separator + objectFileName_);
+                JSONObject jsonObject = readJsonFile(objectFile.getAbsolutePath());
+                MediaContext context = new MediaContext();
+                context.Title = jsonObject.getString("title");
+                context.Tag = jsonObject.getString("type_tag");
+                context.BaseFolder = path;
+                context.MediaType = jsonObject.getString("media_type");
+                context.OutputFolder = outputFolder;
+                context.TempFolder = tempFolder_;
+                JSONObject page = jsonObject.getJSONObject("page_data");
+                if (page != null) {
+                    context.Page = page.getString("page");
+                }
+                if (numOfPages > createFolderIfPageGreater_) {
+                    outputFolder = outputFolder_ + "\\" + FileHelper.correctFileName(jsonObject.getString("title"));
+                    try {
+                        FileHelper.checkOrCreateFolder(outputFolder);
+                    } catch (Exception e) {
+                        System.err.println("[ERR] Cannot create output folder: " + outputFolder_);
+                    }
+                    context.Title =  page.getString("part");;
+                    context.Page = "";
+                    context.OutputFolder = outputFolder;
+                }
+                String outputFilename = "";
+                if (context.MediaType.equals("1")) {
+                    Media1 media1 = new Media1(context);
+                    media1.startConvert();
+                    outputFilename = media1.outputFileName_;
+                } else if (context.MediaType.equals("2")) {
+                    Media2 media2 = new Media2(context);
+                    media2.startConvert();
+                    outputFilename = media2.outputFileName_;
+                } else {
+                    System.err.println("[ERR] Unknown media type in: " + path);
+                }
+                System.out.println("[INFO] Convert done: " + outputFilename);
+            } catch (Exception e) {
+                System.err.println("[ERR] Convert failed: " + e.getMessage());
+            }
+        });
+    }
+
     public static void main(String[] args) {
-        String tempFolder = outputFolder_ + File.separator + tempFolderName_;
+        tempFolder_ = outputFolder_ + File.separator + tempFolderName_;
         try {
             FileHelper.checkOrCreateFolder(outputFolder_);
-            FileHelper.checkOrCreateFolder(tempFolder);
+            FileHelper.checkOrCreateFolder(tempFolder_);
         } catch (Exception e) {
             System.err.println("[ERR] Cannot create output folder: " + outputFolder_);
         }
@@ -32,46 +85,8 @@ public class main {
         FFmpeg.instance().setRuntimeFolder(ffmpegBinFolder_);
         Map<String, List<String>> cacheFolders = findCacheFolders("", inputFolder_, objectFileName_);
         cacheFolders.forEach((key, value) -> {
-            String outputFolder = outputFolder_;
             for (String path: value) {
-                try {
-                    File objectFile = new File(path + File.separator + objectFileName_);
-                    JSONObject jsonObject = readJsonFile(objectFile.getAbsolutePath());
-                    MediaContext context = new MediaContext();
-                    context.Title = jsonObject.getString("title");
-                    context.Tag = jsonObject.getString("type_tag");
-                    context.BaseFolder = path;
-                    context.MediaType = jsonObject.getString("media_type");
-                    context.OutputFolder = outputFolder;
-                    context.TempFolder = tempFolder;
-                    JSONObject page = jsonObject.getJSONObject("page_data");
-                    if (page != null) {
-                        context.Page = page.getString("page");
-                    }
-                    if (value.size() > createFolderIfPageGreater_) {
-                        outputFolder = outputFolder_ + "\\" + FileHelper.correctFileName(jsonObject.getString("title"));
-                        try {
-                            FileHelper.checkOrCreateFolder(outputFolder);
-                        } catch (Exception e) {
-                            System.err.println("[ERR] Cannot create output folder: " + outputFolder_);
-                        }
-                        context.Title =  page.getString("part");;
-                        context.Page = "";
-                        context.OutputFolder = outputFolder;
-                    }
-                    if (context.MediaType.equals("1")) {
-                        Media1 media1 = new Media1(context);
-                        media1.startConvert();
-                    } else if (context.MediaType.equals("2")) {
-                        Media2 media2 = new Media2(context);
-                        media2.startConvert();
-                    } else {
-                        System.err.println("[ERR] Unknown media type in: " + path);
-                    }
-                    System.out.println("[INFO] Convert done");
-                } catch (Exception e) {
-                    System.err.println("[ERR] Convert failed: " + e.getMessage());
-                }
+                doConvert(path, value.size());
             }
         });
     }

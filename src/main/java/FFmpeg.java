@@ -84,7 +84,7 @@ public class FFmpeg {
         try {
             String command = shell + " -y " + params.getResult();
             Process p = Runtime.getRuntime().exec(command);//调用控制台执行shell
-            System.out.println("[INFO] Executing: " + command);
+            // System.out.println("[INFO] Executing: " + command);
             br = new BufferedReader(new InputStreamReader(p.getErrorStream()));//获取执行后出现的错误；getInputStream是获取执行后的结果
             String line = null;
             StringBuilder sb = new StringBuilder();
