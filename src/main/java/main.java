@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class main {
     // Hard code the parameter
@@ -17,12 +18,14 @@ public class main {
     private static int createFolderIfPageGreater_ = 3;
     private static String tempFolderName_ = "temp";
     private static String objectFileName_ = "entry.json";
-
+    private static boolean listOutputFileOnly_ = false;
+    private static AtomicInteger fileNumber_ = new AtomicInteger(0);
     private static String tempFolder_;
 
-    private static ExecutorService fixedThreadPool_ = Executors.newFixedThreadPool(4);
+    private static ExecutorService fixedThreadPool_ = Executors.newFixedThreadPool(6);
 
     public static void doConvert(String path, int numOfPages) {
+        fileNumber_.incrementAndGet();
         fixedThreadPool_.execute(() -> {
             try {
                 String outputFolder = outputFolder_;
@@ -46,30 +49,39 @@ public class main {
                     } catch (Exception e) {
                         System.err.println("[ERR] Cannot create output folder: " + outputFolder_);
                     }
-                    context.Title =  page.getString("part");;
+                    context.Title = page.getString("part");
+                    ;
                     context.Page = "";
                     context.OutputFolder = outputFolder;
                 }
                 String outputFilename = "";
+                MediaBase media = null;
                 if (context.MediaType.equals("1")) {
-                    Media1 media1 = new Media1(context);
-                    media1.startConvert();
-                    outputFilename = media1.outputFileName_;
+                    media = new Media1(context);
                 } else if (context.MediaType.equals("2")) {
-                    Media2 media2 = new Media2(context);
-                    media2.startConvert();
-                    outputFilename = media2.outputFileName_;
+                    media = new Media2(context);
                 } else {
                     System.err.println("[ERR] Unknown media type in: " + path);
                 }
-                System.out.println("[INFO] Convert done: " + outputFilename);
+                if (!listOutputFileOnly_) {
+                    System.out.println("[INFO] Working on " + path);
+                    media.startConvert();
+                    outputFilename = media.outputFileName_;
+                    System.out.println("[INFO] Convert done: " + outputFilename);
+                } else {
+                    System.out.println("[INFO] File: " + media.getOutputFileName());
+                }
+
             } catch (Exception e) {
                 System.err.println("[ERR] Convert failed: " + e.getMessage());
+            }
+            finally {
+                fileNumber_.decrementAndGet();
             }
         });
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         tempFolder_ = outputFolder_ + File.separator + tempFolderName_;
         try {
             FileHelper.checkOrCreateFolder(outputFolder_);
@@ -84,11 +96,17 @@ public class main {
         }
         FFmpeg.instance().setRuntimeFolder(ffmpegBinFolder_);
         Map<String, List<String>> cacheFolders = findCacheFolders("", inputFolder_, objectFileName_);
+        fileNumber_.set(0);
         cacheFolders.forEach((key, value) -> {
-            for (String path: value) {
+            for (String path : value) {
                 doConvert(path, value.size());
             }
         });
+        while (fileNumber_.intValue() != 0) {
+            Thread.sleep(1000);
+        }
+        System.out.println("[INFO] Finished all");
+        fixedThreadPool_.shutdown();
     }
 
     private static Map<String, List<String>> findCacheFolders(String parent, String path, String specifiedFileName) {
@@ -100,9 +118,9 @@ public class main {
             if (f.isDirectory()) {
                 Map<String, List<String>> tmp = findCacheFolders(path, f.getPath(), specifiedFileName);
                 if (!tmp.isEmpty()) {
-                    tmp.forEach((key,value)->  {
+                    tmp.forEach((key, value) -> {
                         if (!cacheFolders.containsKey(key)) {
-                            cacheFolders.put(key,value);
+                            cacheFolders.put(key, value);
                         } else {
                             cacheFolders.get(key).addAll(value);
                         }

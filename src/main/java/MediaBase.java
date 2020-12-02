@@ -17,7 +17,7 @@ public abstract class MediaBase {
         return context_.BaseFolder + File.separator + context_.Tag;
     }
 
-    protected String getOutputFileName() {
+    public String getOutputFileName() {
         if (outputFileName_.isEmpty()) {
             String page = !context_.Page.isEmpty() ? "_" + context_.Page : "";
             String tmp = FileHelper.correctFileName(context_.Title + page);
